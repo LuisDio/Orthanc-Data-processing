@@ -90,7 +90,7 @@ func execFileRemove() {
 func metadataAcess() {
 	fmt.Println("Requesting....")
 	db := accessor()
-	reqst1, err := db.Get("http://192.168.0.174/orthanc/studies")
+	reqst1, err := db.Get("http://0.0.0.0/orthanc/studies")
 
 	if err != nil {
 		log.Fatal(err)
@@ -117,7 +117,7 @@ func metadataAcess() {
 		fmt.Println("For this study id: ", element)
 		time.Sleep(time.Second)
 
-		reqst2, err := db.Get("http://192.168.0.174/orthanc/studies/" + element + "/metadata")
+		reqst2, err := db.Get("http://0.0.0.0/orthanc/studies/" + element + "/metadata")
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -142,7 +142,7 @@ func metadataAcess() {
 		if iscontained {
 			// Implement a post for state when a data already processed
 			fmt.Println("HPatientState found with name ", metaName)
-			reqst3, err := db.Get("http://192.168.0.174/orthanc/studies/" + element + "/metadata/" + metaName)
+			reqst3, err := db.Get("http://0.0.0.0/orthanc/studies/" + element + "/metadata/" + metaName)
 			if err != nil {
 				log.Fatal(err)
 			}
