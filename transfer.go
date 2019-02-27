@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -44,7 +45,6 @@ func contains(metadataList []string, metadataName string) (bool, string) {
 }
 
 func execDownload(hash string) {
-	//downloadCm := "swarm --bzzapi http://localhost:301 down bzz:/" + hash + " data.zip"
 	fmt.Println("Swarm Download execution")
 	swarmCmd := exec.Command("bash", "-c", "./execDown.sh"+" "+hash)
 
@@ -87,6 +87,17 @@ func execFileRemove() {
 
 }
 
+func put(url string, client *http.Client) {
+	//client := accessor()
+	// Put this state when hash value found to avoid repetif check if already checked
+	request, err := http.NewRequest("PUT", url, strings.NewReader("120"))
+	response, err := client.Do(request)
+	if err != nil {
+		log.Fatal(err)
+	}
+	response.Body.Close()
+}
+
 func metadataAcess() {
 	fmt.Println("Requesting....")
 	db := accessor()
@@ -101,77 +112,89 @@ func metadataAcess() {
 	}
 	reqst1.Body.Close()
 
-	fmt.Println("***************After converting request No 1**************")
-	var study []string
-	_ = json.Unmarshal([]byte(responseData), &study)
+	// Converting received data to array string for iterability
+	fmt.Println("*************** Converting first request ***************")
+	var studyIdList []string
+	_ = json.Unmarshal([]byte(responseData), &studyIdList)
 
-	//************************************
-	// Type of Data from the newly converted request
-	fmt.Printf("type of body data for request study is %T \n", study)
-	fmt.Println("The number of studies is: ", len(study))
+	hasStudy := len(studyIdList)
 
-	//************************************
+	fmt.Println("The number of study is: ", hasStudy)
+	if hasStudy > 0 {
+		// DO something meaningfull
+		for _, element := range studyIdList {
+			fmt.Println("This study ID is: ", element)
+			time.Sleep(time.Second)
 
-	for _, element := range study {
-		fmt.Println(" ")
-		fmt.Println("For this study id: ", element)
-		time.Sleep(time.Second)
-
-		reqst2, err := db.Get("http://0.0.0.0/orthanc/studies/" + element + "/metadata")
-		if err != nil {
-			log.Fatal(err)
-		}
-		respMetadata, err := ioutil.ReadAll(reqst2.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		reqst2.Body.Close()
-
-		fmt.Println("***************After converting request No 2**************")
-		var metadata []string
-		_ = json.Unmarshal([]byte(respMetadata), &metadata)
-
-		// Type of Data from the newly converted request
-		fmt.Printf("type of body data for request metadata is %T \n", metadata)
-		fmt.Println("The number of metadata is: ", len(metadata))
-		fmt.Println("The metadata list is ", metadata)
-
-		// Desired Metadata where to look in
-		iscontained, metaName := contains(metadata, "HHashValue") // Dont forget to change metadata to the HashValue
-
-		if iscontained {
-			// Implement a post for state when a data already processed
-			fmt.Println("HPatientState found with name ", metaName)
-			reqst3, err := db.Get("http://0.0.0.0/orthanc/studies/" + element + "/metadata/" + metaName)
+			// Make second request for metadata contained in each study
+			reqst2, err := db.Get("http://0.0.0.0/orthanc/studies/" + element + "/metadata")
 			if err != nil {
 				log.Fatal(err)
 			}
-			metaContent, err := ioutil.ReadAll(reqst3.Body)
+			responseMetadata, err := ioutil.ReadAll(reqst2.Body)
 			if err != nil {
 				log.Fatal(err)
 			}
-			reqst3.Body.Close()
-			fmt.Println("***************After converting request No 3**************")
-			hash := string(metaContent)
-			fmt.Println("The hash value is: ", hash)
-			fmt.Println("Os call execute command")
-			// 1-Exec_command to Download file from swarm to specific directory
-			execDownload(hash)
-			// 2-From chosen directory, unzip file in
-			execExtract()
-			// 3-Send All dicom file to local rohan
-			execTransfer()
-			// 5-Delete the previous file already sent
-			execFileRemove()
+			reqst2.Body.Close()
 
-		} else {
-			//fmt.Println("PASS")
-			continue
+			// Converting second request to array string for iterability
+			fmt.Println("*************** Converting second request ***************")
+			var metadataList []string
+			_ = json.Unmarshal([]byte(responseMetadata), &metadataList)
+
+			// Dont forget to change metadata to the HashValue
+			hasmetadataState, _ := contains(metadataList, "HashState") // false
+			if !hasmetadataState {                                     // false -> true
+				// Do something with the metadata value
+				fmt.Println("it does not have metadata state")
+				fmt.Println("But it does have metadata LastUpdate")
+
+				hasmetadataHash, metadataName := contains(metadataList, "LastUpdate") // true
+				if hasmetadataHash {
+					fmt.Println("LastUpdate found with name ", metadataName)
+					reqst3, err := db.Get("http://0.0.0.0/orthanc/studies/" + element + "/metadata/" + metadataName)
+					if err != nil {
+						log.Fatal(err)
+					}
+					metaContent, err := ioutil.ReadAll(reqst3.Body)
+					if err != nil {
+						log.Fatal(err)
+					}
+					reqst3.Body.Close()
+					hash := string(metaContent)
+					fmt.Println("The hash value is: ", hash)
+					fmt.Println("Os call execute command")
+					// 1-Exec_command to Download file from swarm to specific directory
+					//execDownload(hash)
+					// 2-From chosen directory, unzip file in
+					//execExtract()
+					// 3-Send All dicom file to local rohan
+					//execTransfer()
+					// 4-Delete the previous file already sent
+					//execFileRemove()
+					// Post
+					url := "http://0.0.0.0/orthanc/studies/" + element + "/metadata/HashState"
+					put(url, db)
+					//reqst4, err := db.PostForm("http://0.0.0.0/orthanc/studies/"+element+"/metadata/HashState", "1234")
+
+				} else {
+					// Do something with that
+					fmt.Println("It does not have the metadata LastUpdate")
+					// Then continue to next/ break to check
+				}
+			} else {
+				// go to the next study and check for the required metadata
+				fmt.Println("It has a metadata state")
+				//continue
+			}
+
 		}
-
+	} else {
+		// is an empty list of studies
+		fmt.Println("Is an empty list")
+		// refresh the list by calling the login perhaps
 	}
 
-	//reqst_1.Body.Close()
 }
 
 func main() {
