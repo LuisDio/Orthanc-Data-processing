@@ -1,3 +1,6 @@
+/* Make sure you have the Download directory available in user directory
+*/
+
 package main
 
 import (
@@ -17,6 +20,7 @@ type BasicAuthTransport struct {
 	Password string
 }
 
+// Transsport not really implemented here
 func (bat BasicAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Set("Authorization", fmt.Sprintf("Basic %s",
 		base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s",
