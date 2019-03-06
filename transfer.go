@@ -29,7 +29,7 @@ func (bat *BasicAuthTransport) Client() *http.Client {
 }
 
 func accessor() *http.Client {
-	identification := BasicAuthTransport{"vizyon", "vercors"}
+	identification := BasicAuthTransport{"username", "password"}
 	connector := identification.Client()
 	return connector
 
@@ -89,7 +89,6 @@ func execFileRemove() {
 
 func put(url string, client *http.Client) {
 	//client := accessor()
-	// Put this state when hash value found to avoid repetif check if already checked
 	request, err := http.NewRequest("PUT", url, strings.NewReader("120"))
 	response, err := client.Do(request)
 	if err != nil {
@@ -127,7 +126,7 @@ func metadataAcess() {
 			time.Sleep(time.Second)
 
 			// Make second request for metadata contained in each study
-			reqst2, err := db.Get("http://0.0.0.0/orthanc/studies/" + element + "/metadata")
+			reqst2, err := db.Get("http://0.0.0./orthanc/studies/" + element + "/metadata")
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -175,7 +174,7 @@ func metadataAcess() {
 					// Post
 					url := "http://0.0.0.0/orthanc/studies/" + element + "/metadata/HashState"
 					put(url, db)
-					//reqst4, err := db.PostForm("http://0.0.0.0/orthanc/studies/"+element+"/metadata/HashState", "1234")
+					//reqst4, err := db.PostForm("http://192.168.0.52/orthanc/studies/"+element+"/metadata/HashState", "1234")
 
 				} else {
 					// Do something with that
